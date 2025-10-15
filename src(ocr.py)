@@ -1,0 +1,28 @@
+import cv2
+import numpy as np
+from PIL import Image
+import pytesseract
+
+def pil_to_cv2(pil_image):
+    return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+
+def preprocess_image(pil_image):
+    img = pil_to_cv2(pil_image)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # optional resize
+    h, w = gray.shape
+    if w < 1000:
+        gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+    # remove noise
+    gray = cv2.medianBlur(gray, 3)
+    # adaptive thresholding
+    th = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                               cv2.THRESH_BINARY,11,2)
+    return th
+
+def ocr_image(pil_image, lang='eng', config='--psm 3'):
+    # input: PIL image or preprocessed cv2 image
+    img = pil_image if isinstance(pil_image, str) else pil_image
+    pre = preprocess_image(img)
+    text = pytesseract.image_to_string(pre, lang=lang, config=config)
+    return text
