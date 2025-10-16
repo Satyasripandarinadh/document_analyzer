@@ -1,0 +1,24 @@
+import os
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def summarize_via_llm(extracted_text: str) -> str:
+    """Summarize text extracted from OCR using LLM"""
+    if not extracted_text.strip():
+        return "No text to summarize."
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are an expert summarizer."},
+            {"role": "user", "content": f"Summarize this text:\n\n{extracted_text}"}
+        ],
+        max_tokens=250,
+        temperature=0.5
+    )
+
+    summary = response.choices[0].message.content
+    return summary
