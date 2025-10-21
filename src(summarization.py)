@@ -1,24 +1,26 @@
-import os
-from openai import OpenAI
-from dotenv import load_dotenv
+import google.generativeai as genai
 
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Set your Gemini API key
+genai.configure(api_key=AIzaSyDBGImggDlT3d_H-eiQdFCAWV35wwJv5OM)
 
-def summarize_via_llm(extracted_text: str) -> str:
-    """Summarize text extracted from OCR using LLM"""
-    if not extracted_text.strip():
-        return "No text to summarize."
+def summarize_text_llm(text):
+    """
+    Summarize text using Google Gemini LLM.
+    Returns a dictionary with the summary.
+    """
+    try:
+        response = genai.chat(
+            model="gemini-1.5",  # You can use "gemini-1.5" or "gemini-1.5-turbo"
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant for summarizing text."},
+                {"role": "user", "content": f"Please summarize the following text:\n{text}"}
+            ]
+        )
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are an expert summarizer."},
-            {"role": "user", "content": f"Summarize this text:\n\n{extracted_text}"}
-        ],
-        max_tokens=250,
-        temperature=0.5
-    )
+        # Extract summary text
+        summary_text = response.last
+        return {"summary": summary_text}
 
-    summary = response.choices[0].message.content
-    return summary
+    except Exception as e:
+        print(f"❌ Error summarizing text: {e}")
+        return {"summary": ""}
