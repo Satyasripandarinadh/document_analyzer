@@ -1,39 +1,38 @@
 import easyocr
 import fitz  # PyMuPDF
 import os
+from dotenv import load_dotenv
+import google.generativeai as genai
 
-# Initialize EasyOCR reader
-reader = easyocr.Reader(['en'], gpu=False)
+# Load Gemini API key
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-def extract_text_from_pdf(pdf_path):
-    """
-    Simple OCR: Extract text from PDF using EasyOCR.
-    Works on scanned or image-based PDFs.
-    """
+def extract_text_with_eocr(image_path):
+    """Extract text from image using EasyOCR"""
+    reader = easyocr.Reader(["en"])
+    result = reader.readtext(image_path, detail=0)
+    return "\n".join(result)
+
+def extract_text_with_pymupdf(pdf_path):
+    """Extract text from PDF using PyMuPDF4LLM"""
     text = ""
-    
-    try:
-        # Open PDF
-        doc = fitz.open(pdf_path)
-
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-
-            # Convert page to image
-            pix = page.get_pixmap()
-            img_path = f"temp_page_{page_num}.png"
-            pix.save(img_path)
-
-            # OCR the image
-            result = reader.readtext(img_path, detail=0)
-            page_text = "\n".join(result)
-            text += page_text + "\n"
-
-            # Remove temporary image
-            os.remove(img_path)
-
-    except Exception as e:
-        print(f"Error: {e}")
-
+    with fitz.open(pdf_path) as pdf:
+        for page in pdf:
+            text += page.get_text("text")
     return text
 
+def refine_text_with_gemini(raw_text):
+    """Use Gemini to clean and structure OCR text"""
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    prompt = f"Clean and correct OCR errors in the following text:\n\n{raw_text}"
+    response = model.generate_content(prompt)
+    return response.text.strip()
+
+def extract_text_from_pdf(file_path):
+    """Combine PyMuPDF + EasyOCR + Gemini enhancement"""
+    pdf_text = extract_text_with_pymupdf(file_path)
+    ocr_text = extract_text_with_eocr(file_path)
+    combined_text = pdf_text + "\n" + ocr_text
+    refined_text = refine_text_with_gemini(combined_text)
+    return refined_text
